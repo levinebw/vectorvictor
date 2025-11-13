@@ -1,2 +1,2 @@
 # vectorvictor
-Collection of sample vulnerable apps
+Collection of sample vulnerable code. 
