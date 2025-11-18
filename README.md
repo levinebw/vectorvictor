@@ -2,8 +2,6 @@
 
 *"What's our vector, Victor?"* - A collection of intentionally vulnerable code examples for security testing, training, and educational purposes.
 
-> **Fun fact:** This repo name is a tribute to the classic *Airplane!* quote, but here we're navigating through security vulnerabilities instead of flight paths. Clearance, Clarence?
-
 ## ⚠️ Warning
 
 **DO NOT deploy these applications. These are sample code snippets that have not been tested as executables.**
@@ -77,24 +75,11 @@ Python web application examples demonstrating **OWASP Top 10 (2021)** vulnerabil
 - Weak Cryptography
 - Hardcoded Secrets
 
-## 🎯 Use Cases
-
-- **Security Training** - Learn to identify and exploit common vulnerabilities
-- **Tool Testing** - Validate security scanners and SAST/DAST tools
-- **CTF Challenges** - Practice offensive security techniques
-- **Secure Code Reviews** - Learn what NOT to do
-- **Penetration Testing** - Practice in authorized environments
 
 ## 🚀 Getting Started
 
-Each directory contains its own README with specific setup instructions and vulnerability descriptions.
+Each directory contains its own README with specific vulnerability descriptions.
 
-### Prerequisites
-
-- Python 3.8+
-- Docker & Docker Compose
-- Terraform (for IaC examples)
-- Virtual environment recommended
 
 ### Quick Start
 
@@ -109,7 +94,7 @@ pip install -r requirements.txt
 python agent.py
 ```
 
-## 📚 Learning Resources
+## 📚 Additional References
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
@@ -118,7 +103,7 @@ python agent.py
 
 ## ⚖️  Disclaimer
 
-This repository is for **authorized security testing and educational purposes only**. 
+This repository is for **educational and demo purposes only**. 
 
 ## 🤝 Contributing
 
