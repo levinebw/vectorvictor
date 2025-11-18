@@ -417,7 +417,6 @@ Use this checklist to verify your LLM security scanner detects:
 
 - [OWASP Top 10 for LLM Applications 2025](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - [OWASP GenAI Security Project](https://genai.owasp.org/)
-- [LLM Security Best Practices](https://llmsecurity.net/)
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
 
 ## Disclaimer
