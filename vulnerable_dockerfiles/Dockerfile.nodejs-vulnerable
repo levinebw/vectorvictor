@@ -1,0 +1,58 @@
+# Vulnerable Node.js Dockerfile
+# Contains multiple security vulnerabilities
+
+# VULNERABLE: Using 'latest' tag - no version pinning
+FROM node:latest
+
+# VULNERABLE: Running as root user (no USER instruction)
+
+# VULNERABLE: Installing packages without version pinning
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    vim \
+    sudo \
+    # VULNERABLE: Unnecessary packages increasing attack surface
+    netcat \
+    telnet \
+    wget
+
+# VULNERABLE: Not cleaning up apt cache
+# Should add: && rm -rf /var/lib/apt/lists/*
+
+# VULNERABLE: Exposing SSH port
+EXPOSE 22
+
+# VULNERABLE: Setting working directory in root filesystem
+WORKDIR /app
+
+# VULNERABLE: Copying entire context (may include secrets, .git, etc.)
+COPY . .
+
+# VULNERABLE: Hardcoded secrets in Dockerfile
+ENV DB_PASSWORD="SuperSecret123!"
+ENV API_KEY="sk-1234567890abcdefghijklmnop"
+ENV AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
+ENV AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+# VULNERABLE: Installing dependencies as root
+RUN npm install
+
+# VULNERABLE: npm install without --production flag (includes dev dependencies)
+# VULNERABLE: No package-lock.json verification
+# VULNERABLE: No npm audit
+
+# VULNERABLE: Exposing unnecessary ports
+EXPOSE 3000 8080 9000
+
+# VULNERABLE: Using npm start (may not handle signals properly)
+# VULNERABLE: Still running as root
+CMD ["npm", "start"]
+
+# MISSING SECURITY BEST PRACTICES:
+# - No HEALTHCHECK
+# - No .dockerignore file usage
+# - No vulnerability scanning
+# - No USER directive (running as root)
+# - No read-only root filesystem
+# - No resource limits

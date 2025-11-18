@@ -1,0 +1,68 @@
+# Vulnerable Java Dockerfile
+# Contains JVM and container-specific vulnerabilities
+
+# VULNERABLE: Using full JDK instead of JRE
+# VULNERABLE: No version pinning (using latest)
+FROM openjdk:latest
+
+# VULNERABLE: Running as root
+
+# VULNERABLE: Installing debugging tools in production
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    vim \
+    telnet \
+    # VULNERABLE: Unnecessary build tools
+    maven \
+    # VULNERABLE: Network debugging tools
+    tcpdump \
+    nmap
+
+# VULNERABLE: Hardcoded credentials in ENV
+ENV DB_USER="admin"
+ENV DB_PASSWORD="admin123"
+ENV JDBC_URL="jdbc:mysql://prod-db.internal:3306/app?user=root&password=rootpass"
+
+# VULNERABLE: Java security properties weakened
+ENV JAVA_OPTS="-Djava.security.egd=file:/dev/./urandom \
+    -Dcom.sun.management.jmxremote \
+    -Dcom.sun.management.jmxremote.port=9010 \
+    -Dcom.sun.management.jmxremote.rmi.port=9010 \
+    -Dcom.sun.management.jmxremote.authenticate=false \
+    -Dcom.sun.management.jmxremote.ssl=false"
+# VULNERABLE: JMX without authentication/SSL
+
+# VULNERABLE: Disabling SSL/TLS verification
+ENV JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustAll=true"
+
+WORKDIR /app
+
+# VULNERABLE: Copying without .dockerignore
+COPY . .
+
+# VULNERABLE: Building inside production image
+RUN mvn clean package -DskipTests
+# VULNERABLE: Skipping tests
+# VULNERABLE: Including Maven in production image
+
+# VULNERABLE: Exposing JMX and debug ports
+EXPOSE 8080 9010 5005
+
+# VULNERABLE: JAR file with overly permissive permissions
+RUN chmod 777 /app/target/*.jar
+
+# VULNERABLE: Running with debug mode enabled
+CMD java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \
+    ${JAVA_OPTS} \
+    -jar target/app.jar
+
+# VULNERABLE: Remote debugging enabled in production
+# VULNERABLE: Running as root
+# VULNERABLE: No healthcheck
+
+# MISSING:
+# - Multi-stage build
+# - USER directive
+# - Minimal base image (should use distroless)
+# - Dependency vulnerability scanning

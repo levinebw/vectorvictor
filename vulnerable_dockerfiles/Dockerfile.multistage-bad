@@ -1,0 +1,61 @@
+# Vulnerable Multi-Stage Dockerfile
+# Even with multi-stage builds, contains security issues
+
+# Build stage
+FROM golang:1.15 AS builder
+# VULNERABLE: Old Go version
+
+# VULNERABLE: Running as root in build stage
+WORKDIR /build
+
+# VULNERABLE: Copying source without .dockerignore
+COPY . .
+
+# VULNERABLE: Not verifying dependencies
+RUN go mod download
+
+# VULNERABLE: Building without security flags
+RUN go build -o app main.go
+# Should use: -ldflags="-w -s" to strip symbols
+
+# VULNERABLE: Secrets might be in build stage environment
+ARG GITHUB_TOKEN=ghp_1234567890abcdef
+RUN echo "token=${GITHUB_TOKEN}" > .netrc
+
+# Production stage
+FROM ubuntu:18.04
+# VULNERABLE: Using general purpose OS instead of minimal base
+# VULNERABLE: Old Ubuntu version
+
+# VULNERABLE: Installing unnecessary packages in final stage
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    wget \
+    vim \
+    # VULNERABLE: Shell and debug tools in production
+    bash \
+    netcat \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# VULNERABLE: Copying with wrong ownership
+COPY --from=builder /build/app .
+
+# VULNERABLE: Copying potential secrets from builder
+COPY --from=builder /build/.netrc /root/.netrc
+
+# VULNERABLE: Setting hardcoded credentials
+ENV DATABASE_URL="postgres://user:pass@localhost/db"
+ENV API_SECRET="my-secret-key"
+
+# VULNERABLE: Still running as root (no USER directive)
+
+# VULNERABLE: Overly permissive file permissions
+RUN chmod 777 /app
+
+EXPOSE 8080
+
+# VULNERABLE: Using shell form
+CMD ./app
