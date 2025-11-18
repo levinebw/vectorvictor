@@ -1,0 +1,159 @@
+# Vulnerable Docker Compose Configuration
+# Demonstrates insecure container orchestration
+
+version: '3.8'
+
+services:
+  # VULNERABLE: Web application with multiple security issues
+  web:
+    build: .
+    image: vulnerable-app:latest
+
+    # VULNERABLE: Running in privileged mode
+    privileged: true
+
+    # VULNERABLE: All capabilities granted
+    cap_add:
+      - ALL
+
+    # VULNERABLE: No capability restrictions
+    # Missing: cap_drop: [ALL]
+
+    # VULNERABLE: Host network mode (bypasses network isolation)
+    network_mode: "host"
+
+    # VULNERABLE: Disabling security features
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+      - no-new-privileges:false
+
+    # VULNERABLE: Using host PID namespace
+    pid: "host"
+
+    # VULNERABLE: Using host IPC namespace
+    ipc: "host"
+
+    # VULNERABLE: Mounting Docker socket (container breakout risk)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # VULNERABLE: Mounting entire host root filesystem
+      - /:/host
+      # VULNERABLE: Writable host mounts
+      - /etc:/host-etc:rw
+      - /var:/host-var:rw
+
+    # VULNERABLE: Hardcoded secrets in environment
+    environment:
+      - DATABASE_PASSWORD=SuperSecret123!
+      - API_KEY=sk-1234567890abcdef
+      - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+      - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      - ADMIN_TOKEN=admin-token-123456
+
+    # VULNERABLE: Exposing all ports
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:22:22"      # SSH
+      - "0.0.0.0:3306:3306"  # MySQL
+      - "0.0.0.0:5432:5432"  # PostgreSQL
+      - "0.0.0.0:6379:6379"  # Redis
+      - "0.0.0.0:27017:27017" # MongoDB
+
+    # VULNERABLE: No resource limits
+    # Missing: deploy.resources.limits
+
+    # VULNERABLE: Restart always (may restart vulnerable services)
+    restart: always
+
+    # VULNERABLE: No healthcheck
+    # Missing: healthcheck
+
+  # VULNERABLE: Database with insecure configuration
+  database:
+    image: postgres:10
+    # VULNERABLE: Old PostgreSQL version
+
+    # VULNERABLE: Default/weak credentials
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: production
+
+    # VULNERABLE: Database exposed to host
+    ports:
+      - "5432:5432"
+
+    # VULNERABLE: No data encryption
+    # VULNERABLE: No backup strategy
+
+    volumes:
+      # VULNERABLE: Database data on host without encryption
+      - ./db-data:/var/lib/postgresql/data
+
+    # VULNERABLE: No resource limits
+    # Can consume all host resources
+
+  # VULNERABLE: Redis without authentication
+  cache:
+    image: redis:latest
+    # VULNERABLE: Using latest tag
+
+    # VULNERABLE: No authentication
+    command: redis-server --requirepass ""
+
+    # VULNERABLE: Exposed to host network
+    ports:
+      - "6379:6379"
+
+    # VULNERABLE: No persistence configuration
+    # Data loss risk
+
+  # VULNERABLE: Admin panel with debug mode
+  admin:
+    build: ./admin
+
+    environment:
+      - DEBUG=true
+      - FLASK_ENV=development
+      - SECRET_KEY=hardcoded-secret
+
+    # VULNERABLE: Admin panel exposed publicly
+    ports:
+      - "0.0.0.0:8000:8000"
+
+    # VULNERABLE: Running as root
+    user: "0:0"
+
+  # VULNERABLE: Elasticsearch without security
+  search:
+    image: elasticsearch:7.0.0
+    # VULNERABLE: Old version with known vulnerabilities
+
+    environment:
+      - discovery.type=single-node
+      # VULNERABLE: No authentication
+      - xpack.security.enabled=false
+
+    # VULNERABLE: Exposed without authentication
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+# VULNERABLE: Default network (no isolation)
+networks:
+  default:
+    # No network segmentation
+
+# MISSING SECURITY BEST PRACTICES:
+# - No secrets management (Docker secrets or external vault)
+# - No resource limits (memory, CPU)
+# - No read-only root filesystems
+# - No security scanning in CI/CD
+# - No least privilege (running as root)
+# - No network segmentation
+# - No TLS/encryption between services
+# - No logging aggregation
+# - No monitoring/alerting
+# - No backup strategy

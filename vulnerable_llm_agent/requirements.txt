@@ -1,0 +1,31 @@
+# Vulnerable LLM Agent Dependencies
+# ⚠️ FOR TESTING PURPOSES ONLY
+
+# Core LLM dependencies
+llama-cpp-python==0.2.11
+transformers==4.35.0
+torch==2.1.0
+
+# Vector database and embeddings
+chromadb==0.4.15
+sentence-transformers==2.2.2
+
+# API and web framework
+flask==3.0.0
+requests==2.31.0
+
+# Data processing
+numpy==1.24.3
+pandas==2.0.3
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# VULNERABLE: Outdated packages with known vulnerabilities
+# These should be updated in production!
+# pickle==0.7.5  # VULNERABLE: Insecure deserialization
+# PyYAML==5.3.1  # VULNERABLE: Arbitrary code execution
+
+# Note: This requirements.txt intentionally includes vulnerable versions
+# for demonstration purposes. In production, always use latest secure versions.

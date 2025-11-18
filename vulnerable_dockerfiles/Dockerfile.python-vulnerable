@@ -1,0 +1,70 @@
+# Vulnerable Python Dockerfile
+# Demonstrates container security anti-patterns
+
+# VULNERABLE: Using outdated Python version
+FROM python:3.7
+
+# VULNERABLE: Running as root throughout
+
+# VULNERABLE: Installing unnecessary system packages
+RUN apt-get update && \
+    apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    # VULNERABLE: Adding tools that could be used for attacks
+    nmap \
+    tcpdump \
+    netcat-openbsd \
+    # VULNERABLE: Installing compiler tools in production image
+    build-essential
+
+# VULNERABLE: Not removing apt cache (larger image size)
+
+# VULNERABLE: Setting insecure environment variables
+ENV FLASK_ENV=development
+ENV FLASK_DEBUG=1
+ENV SECRET_KEY="hardcoded-secret-key-123"
+ENV DATABASE_URL="postgresql://admin:password@db.example.com/prod"
+ENV ADMIN_PASSWORD="admin123"
+
+# VULNERABLE: Working directory in /root
+WORKDIR /root/app
+
+# VULNERABLE: Copying with overly permissive permissions
+COPY --chmod=777 . .
+
+# VULNERABLE: pip install without version pinning
+RUN pip install flask requests sqlalchemy
+
+# VULNERABLE: Installing from untrusted PyPI mirror
+RUN pip install --index-url http://pypi.example.com/simple/ some-package
+
+# VULNERABLE: Running pip as root
+RUN pip install --upgrade pip
+
+# VULNERABLE: Disabling SSL verification
+ENV PYTHONHTTPSVERIFY=0
+ENV CURL_CA_BUNDLE=""
+
+# VULNERABLE: Adding execute permissions to everything
+RUN chmod +x -R /root/app
+
+# VULNERABLE: Creating world-writable directories
+RUN mkdir -p /tmp/uploads && chmod 777 /tmp/uploads
+
+# VULNERABLE: Exposing internal/debug ports
+EXPOSE 5000 8000 9090
+
+# VULNERABLE: Running application as root with shell form
+CMD python app.py
+
+# VULNERABLE: Using shell form (doesn't handle signals properly)
+# Should use: CMD ["python", "app.py"]
+
+# MISSING BEST PRACTICES:
+# - No multi-stage build
+# - No USER directive
+# - No HEALTHCHECK
+# - No signal handling
+# - No resource constraints

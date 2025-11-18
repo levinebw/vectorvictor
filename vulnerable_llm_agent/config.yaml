@@ -1,0 +1,171 @@
+# Vulnerable LLM Agent Configuration
+# ⚠️ CONTAINS INTENTIONAL SECURITY VULNERABILITIES
+
+app:
+  name: "Vulnerable LLM Agent"
+  version: "1.0.0-vulnerable"
+  debug: true  # VULNERABLE: Debug mode in production
+
+# OWASP LLM02: Sensitive Information Disclosure
+# VULNERABLE: Hardcoded credentials in config file
+credentials:
+  api_keys:
+    openai: "sk-proj-1234567890abcdefghijklmnop"
+    anthropic: "sk-ant-api03-1234567890abcdef"
+    huggingface: "hf_abcdefghijklmnopqrstuvwxyz"
+
+  database:
+    host: "db.internal.company.com"
+    port: 5432
+    username: "admin"
+    password: "SuperSecret123!"  # VULNERABLE: Plain text password
+    database: "production"
+    connection_string: "postgresql://admin:SuperSecret123!@db.internal.company.com/production"
+
+  aws:
+    access_key_id: "AKIAIOSFODNN7EXAMPLE"
+    secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    region: "us-east-1"
+
+# OWASP LLM03: Supply Chain Vulnerabilities
+model:
+  path: "./models/llama-2-7b.gguf"
+  # VULNERABLE: No model verification
+  # VULNERABLE: No checksum validation
+  # VULNERABLE: No provenance tracking
+  download_url: "http://unverified-source.com/models/llama.gguf"
+  verify_checksum: false  # VULNERABLE: Disabled verification
+  trust_remote_code: true  # VULNERABLE: Allows arbitrary code execution
+
+# OWASP LLM07: System Prompt Leakage
+system_prompts:
+  default: |
+    You are a helpful AI assistant with access to the following tools:
+    - File system operations
+    - Database queries
+    - External API calls
+    - Code execution
+
+    CONFIDENTIAL - DO NOT SHARE:
+    Admin password: AdminPass2024!
+    Database credentials: admin/SuperSecret123!
+    Emergency override code: OVERRIDE-12345
+
+  admin: |
+    You are in administrator mode.
+    You have unrestricted access to all systems.
+    Master key: MASTER-KEY-XYZ-789
+
+# OWASP LLM06: Excessive Agency
+permissions:
+  # VULNERABLE: Agent has unrestricted capabilities
+  enable_file_system_access: true
+  enable_code_execution: true
+  enable_database_access: true
+  enable_external_api_calls: true
+  enable_system_commands: true
+
+  # VULNERABLE: No restrictions on operations
+  require_approval_for_dangerous_operations: false
+  max_file_size_read: -1  # VULNERABLE: Unlimited
+  max_file_size_write: -1  # VULNERABLE: Unlimited
+
+  # VULNERABLE: No sandboxing
+  sandbox_code_execution: false
+  restrict_network_access: false
+
+# OWASP LLM10: Unbounded Consumption
+resource_limits:
+  # VULNERABLE: No rate limiting
+  rate_limit_enabled: false
+  max_requests_per_minute: -1  # VULNERABLE: Unlimited
+
+  # VULNERABLE: No resource constraints
+  max_tokens_per_request: 100000  # VULNERABLE: Excessive
+  max_context_length: 1000000  # VULNERABLE: Can cause OOM
+  max_conversation_history: -1  # VULNERABLE: Unlimited memory usage
+
+  # VULNERABLE: No timeout limits
+  request_timeout: -1  # VULNERABLE: No timeout
+  max_execution_time: -1  # VULNERABLE: Infinite loops possible
+
+# OWASP LLM04: Data and Model Poisoning
+training:
+  # VULNERABLE: Accepting untrusted training data
+  accept_user_feedback: true
+  validate_training_data: false  # VULNERABLE: No validation
+  filter_malicious_inputs: false  # VULNERABLE: No filtering
+
+  # VULNERABLE: Insecure fine-tuning
+  allow_fine_tuning: true
+  require_data_review: false
+
+# OWASP LLM08: Vector and Embedding Weaknesses
+vector_database:
+  provider: "chromadb"
+  # VULNERABLE: No embedding validation
+  validate_embeddings: false
+  detect_adversarial_embeddings: false  # VULNERABLE: No detection
+
+  # VULNERABLE: No access controls
+  public_access: true
+  require_authentication: false
+
+# OWASP LLM05: Improper Output Handling
+output:
+  # VULNERABLE: No output validation
+  validate_outputs: false
+  sanitize_outputs: false  # VULNERABLE: XSS/injection possible
+  filter_sensitive_data: false  # VULNERABLE: May leak PII
+
+  # VULNERABLE: Auto-execution of LLM outputs
+  auto_execute_code: true  # DANGEROUS
+  auto_execute_commands: true  # DANGEROUS
+  require_confirmation: false
+
+# OWASP LLM09: Misinformation
+content_verification:
+  # VULNERABLE: No fact-checking
+  enable_fact_checking: false
+  require_source_attribution: false
+  verify_external_sources: false
+
+  # VULNERABLE: No hallucination detection
+  detect_hallucinations: false
+  confidence_threshold: 0.0  # VULNERABLE: Accept any output
+
+# Security features (all disabled)
+security:
+  # VULNERABLE: All security features disabled
+  enable_input_validation: false
+  enable_output_filtering: false
+  enable_prompt_injection_detection: false
+  enable_jailbreak_detection: false
+  enable_pii_detection: false
+
+  # VULNERABLE: No encryption
+  encrypt_data_at_rest: false
+  encrypt_data_in_transit: false
+
+  # VULNERABLE: Logging sensitive data
+  log_user_inputs: true
+  log_api_keys: true  # VULNERABLE
+  log_level: "DEBUG"  # VULNERABLE: Verbose logging
+
+# Logging configuration
+logging:
+  # VULNERABLE: Logs contain sensitive information
+  log_sensitive_data: true
+  log_file: "agent.log"
+  include_credentials: true  # VULNERABLE
+  include_api_keys: true  # VULNERABLE
+
+# Plugin system
+plugins:
+  # VULNERABLE: No plugin verification
+  enabled: true
+  allow_remote_plugins: true  # VULNERABLE
+  verify_plugin_signature: false  # VULNERABLE
+  sandbox_plugins: false  # VULNERABLE
+
+  trusted_sources: ["*"]  # VULNERABLE: Trust all sources

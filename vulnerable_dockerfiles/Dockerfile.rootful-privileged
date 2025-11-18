@@ -1,0 +1,83 @@
+# Dockerfile with Privilege and Permission Issues
+# Demonstrates running as root and permission anti-patterns
+
+FROM alpine:3.14
+# VULNERABLE: Older Alpine version
+
+# VULNERABLE: Installing unnecessary privileged tools
+RUN apk add --no-cache \
+    sudo \
+    shadow \
+    # VULNERABLE: Container breakout tools
+    docker-cli \
+    # VULNERABLE: System modification tools
+    util-linux \
+    coreutils \
+    procps
+
+# VULNERABLE: Creating sudo user without proper restrictions
+RUN adduser -D appuser && \
+    echo "appuser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+# VULNERABLE: Passwordless sudo for application user
+
+# VULNERABLE: Setting overly permissive capabilities
+# Would be set in docker-compose or kubernetes:
+# cap_add: [SYS_ADMIN, NET_ADMIN, SYS_PTRACE]
+
+# VULNERABLE: Disabling security features
+# Would be in docker run: --security-opt seccomp=unconfined
+
+# VULNERABLE: World-writable directories
+RUN mkdir -p /app /data /logs && \
+    chmod 777 /app /data /logs
+
+# VULNERABLE: SUID binaries
+RUN chmod u+s /bin/su /bin/sudo /usr/bin/passwd
+
+# VULNERABLE: Copying files with execute permissions for all
+COPY --chmod=0777 app.sh /app/
+
+# VULNERABLE: Adding appuser to privileged groups
+RUN addgroup appuser root && \
+    addgroup appuser wheel && \
+    addgroup appuser docker
+
+WORKDIR /app
+
+# VULNERABLE: Files owned by root but writable by others
+RUN touch /app/config.yaml && chmod 666 /app/config.yaml
+
+# VULNERABLE: Mounting host Docker socket (would be in docker-compose)
+# volumes:
+#   - /var/run/docker.sock:/var/run/docker.sock
+
+# VULNERABLE: Running in privileged mode (would be in docker-compose)
+# privileged: true
+
+# VULNERABLE: Disabling default security (would be in docker run)
+# --security-opt apparmor=unconfined
+# --security-opt seccomp=unconfined
+# --cap-add=ALL
+
+# VULNERABLE: Host network mode (would be in docker-compose)
+# network_mode: host
+
+# VULNERABLE: Host PID namespace (would be in docker-compose)
+# pid: host
+
+# VULNERABLE: Not dropping capabilities
+# Should include: --cap-drop=ALL --cap-add=NET_BIND_SERVICE
+
+# VULNERABLE: Running as root
+# Missing: USER appuser
+
+CMD ["/bin/sh"]
+
+# VULNERABILITIES SUMMARY:
+# - Running as root user (uid 0)
+# - Sudo without password
+# - World-writable application directories
+# - SUID binaries present
+# - User in privileged groups
+# - Overly permissive file permissions (777, 666)
+# - Unnecessary system tools installed
