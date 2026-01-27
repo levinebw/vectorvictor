@@ -51,6 +51,7 @@ Examples of insecure Docker configurations and container practices:
 - **Dockerfile.secrets-exposed** - Hardcoded secrets and credentials
 - **Dockerfile.rootful-privileged** - Privileged containers running as root
 - **Dockerfile.multistage-bad** - Insecure multi-stage builds
+- **Dockerfile.n8n-vulnerable** - n8n with CVE-2026-21858 (CVSS 10.0)
 - **docker-compose.vulnerable.yml** - Insecure Docker Compose configuration
 
 ### 🏗️ Vulnerable Terraform (`vulnerable_terraform/`)
@@ -62,6 +63,12 @@ Infrastructure-as-Code examples with security misconfigurations:
 - **aws_rds_vulnerable.tf** - Unencrypted databases, weak passwords, public access
 - **aws_iam_vulnerable.tf** - Overly permissive IAM policies and roles
 - **aws_misc_vulnerable.tf** - Additional AWS security issues
+
+### 📦 Vulnerable Packages (`vulnerable_packages/`)
+
+Examples of applications using vulnerable open-source dependencies for SCA testing:
+
+- **n8n-workflow/** - Workflow automation with n8n v1.100.0 (CVE-2026-21858, CVSS 10.0)
 
 ### 🌐 Vulnerable Web Applications (`vulnerable_apps/`)
 

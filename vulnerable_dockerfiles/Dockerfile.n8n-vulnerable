@@ -1,0 +1,47 @@
+# Vulnerable n8n Container
+# This Dockerfile uses a vulnerable version of n8n affected by CVE-2026-21858
+
+FROM n8nio/n8n:1.100.0
+
+LABEL maintainer="demo@example.com"
+LABEL description="Workflow automation service"
+LABEL vulnerability="CVE-2026-21858"
+
+# Environment configuration
+ENV N8N_BASIC_AUTH_ACTIVE=false
+ENV N8N_HOST=0.0.0.0
+ENV N8N_PORT=5678
+ENV N8N_PROTOCOL=http
+ENV GENERIC_TIMEZONE=UTC
+
+# Expose the n8n port
+EXPOSE 5678
+
+# Start n8n
+CMD ["n8n", "start"]
+
+# =============================================================================
+# VULNERABILITY INFORMATION
+# =============================================================================
+#
+# CVE-2026-21858: Critical Content-Type Confusion RCE in n8n
+#
+# Affected: n8n versions >= 1.65.0 and < 1.121.0
+# CVSS Score: 10.0 (Critical)
+# CWE: CWE-20 (Improper Input Validation)
+#
+# The n8n:1.100.0 base image contains a critical vulnerability in Form Webhook
+# handling that allows unauthenticated attackers to:
+#   - Read arbitrary files from the container
+#   - Extract database and session secrets
+#   - Forge administrator sessions
+#   - Execute arbitrary commands
+#
+# REMEDIATION:
+# Update to a fixed version:
+#   FROM n8nio/n8n:1.121.0
+#
+# References:
+#   - https://nvd.nist.gov/vuln/detail/CVE-2026-21858
+#   - https://github.com/n8n-io/n8n/security/advisories/GHSA-v4pr-fm98-w9pg
+# =============================================================================
