@@ -1,0 +1,125 @@
+rules:
+
+  # ---------------------------------------------------------------
+  # Rule 1: Workflow-level permissions: write-all
+  # ---------------------------------------------------------------
+  # Catches the most obvious anti-pattern: granting the GITHUB_TOKEN
+  # full write access to every scope at the workflow level.
+  #
+  # Example match:
+  #   permissions: write-all
+  #   jobs:
+  #     build:
+  #       runs-on: ubuntu-latest
+  # ---------------------------------------------------------------
+  - id: gha-workflow-permissions-write-all
+    message: >
+      GitHub Actions workflow grants 'permissions: write-all' at the
+      workflow level, giving the GITHUB_TOKEN unrestricted write access
+      to all scopes (contents, packages, pull-requests, etc.).
+      Apply least-privilege by declaring only the permissions each job
+      actually needs.
+    severity: ERROR
+    languages: [yaml]
+    metadata:
+      cwe:
+        - "CWE-250: Execution with Unnecessary Privileges"
+      references:
+        - https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+      category: security
+    patterns:
+      - pattern: |
+          permissions: write-all
+      - pattern-not-inside: |
+          jobs:
+            ...
+            $JOB:
+              ...
+              permissions: write-all
+              ...
+    paths:
+      include:
+        - "*.yml"
+        - "*.yaml"
+
+  # ---------------------------------------------------------------
+  # Rule 2: Job-level permissions: write-all
+  # ---------------------------------------------------------------
+  # Same problem scoped to a single job. Still overly broad since
+  # it grants write to every scope for that job.
+  #
+  # Example match:
+  #   jobs:
+  #     deploy:
+  #       permissions: write-all
+  #       runs-on: ubuntu-latest
+  # ---------------------------------------------------------------
+  - id: gha-job-permissions-write-all
+    message: >
+      GitHub Actions job grants 'permissions: write-all', giving the
+      GITHUB_TOKEN unrestricted write access for this job. Narrow the
+      permissions to only those required (e.g., contents: read).
+    severity: WARNING
+    languages: [yaml]
+    metadata:
+      cwe:
+        - "CWE-250: Execution with Unnecessary Privileges"
+      references:
+        - https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+      category: security
+    pattern: |
+      jobs:
+        ...
+        $JOB:
+          ...
+          permissions: write-all
+          ...
+    paths:
+      include:
+        - "*.yml"
+        - "*.yaml"
+
+  # ---------------------------------------------------------------
+  # Rule 3: Workflow-level broad write scopes
+  # ---------------------------------------------------------------
+  # Catches explicit per-scope write grants at the workflow level
+  # that are commonly over-provisioned. The metavariable $SCOPE
+  # matches any scope key (contents, packages, etc.) set to write.
+  #
+  # Example match:
+  #   permissions:
+  #     contents: write
+  #     packages: write
+  #     pull-requests: write
+  # ---------------------------------------------------------------
+  - id: gha-workflow-broad-write-permissions
+    message: >
+      GitHub Actions workflow grants write access to scope '$SCOPE'
+      at the workflow level. Verify this is required. Prefer setting
+      permissions at the job level so each job gets only what it needs.
+    severity: WARNING
+    languages: [yaml]
+    metadata:
+      cwe:
+        - "CWE-250: Execution with Unnecessary Privileges"
+      references:
+        - https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication
+      category: security
+    patterns:
+      - pattern: |
+          permissions:
+            ...
+            $SCOPE: write
+            ...
+      - pattern-not-inside: |
+          jobs:
+            ...
+            $JOB:
+              ...
+              permissions:
+                ...
+              ...
+    paths:
+      include:
+        - "*.yml"
+        - "*.yaml"

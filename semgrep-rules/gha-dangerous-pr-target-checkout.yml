@@ -1,0 +1,97 @@
+rules:
+
+  # ---------------------------------------------------------------
+  # Dangerous pull_request_target + PR code checkout
+  # ---------------------------------------------------------------
+  # Based on the official Semgrep rule:
+  # yaml.github-actions.security.pull-request-target-code-checkout
+  # Source: https://github.com/semgrep/semgrep-rules/blob/develop/yaml/github-actions/security/pull-request-target-code-checkout.yaml
+  #
+  # The pull_request_target event runs in the context of the BASE
+  # (target) repository, which means it has access to all repo
+  # secrets. Checking out the PR head then executes untrusted
+  # code from the fork with those secrets available.
+  #
+  # Covers all three trigger syntax variants:
+  #   on:
+  #     pull_request_target: ...        (mapping)
+  #   on: [push, pull_request_target]   (list)
+  #   on: pull_request_target           (bare string)
+  #
+  # Covers all ref variants via metavariable-pattern:
+  #   github.event.pull_request.head.sha
+  #   github.event.pull_request.head.ref
+  #   github.head_ref
+  # ---------------------------------------------------------------
+  - id: gha-pr-target-code-checkout
+    languages: [yaml]
+    message: >-
+      This GitHub Actions workflow uses `pull_request_target` and checks
+      out code from the incoming pull request. When using
+      `pull_request_target`, the Action runs in the context of the target
+      repository, which includes access to all repository secrets.
+      By checking out the incoming PR code, any build scripts
+      (npm install, make, pip install) execute attacker-controlled code
+      with access to those secrets, allowing an attacker to steal them.
+      Audit your workflow to ensure no incoming PR code is executed.
+      See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+    severity: ERROR
+    metadata:
+      category: security
+      owasp:
+        - "A08:2021 - Software and Data Integrity Failures"
+      cwe:
+        - "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      references:
+        - https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+        - https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
+      likelihood: MEDIUM
+      impact: HIGH
+      confidence: HIGH
+    patterns:
+      # Match any of the three trigger syntax forms
+      - pattern-either:
+          - pattern-inside: |
+              on:
+                ...
+                pull_request_target: ...
+                ...
+              ...
+          - pattern-inside: |
+              on: [..., pull_request_target, ...]
+              ...
+          - pattern-inside: |
+              on: pull_request_target
+              ...
+      # Scope to within a job's steps block
+      - pattern-inside: |
+          jobs:
+            ...
+            $JOBNAME:
+              ...
+              steps:
+                ...
+      # Match the checkout action with a ref parameter
+      - pattern: |
+          ...
+          uses: "$ACTION"
+          with:
+            ...
+            ref: $EXPR
+      # Ensure it's an actions/checkout action
+      - metavariable-regex:
+          metavariable: $ACTION
+          regex: actions/checkout@.*
+      # Ensure the ref expression references the incoming PR
+      - metavariable-pattern:
+          language: generic
+          metavariable: $EXPR
+          patterns:
+            - pattern-inside: "${{ ... }}"
+            - pattern-either:
+                - pattern: github.event.pull_request ...
+                - pattern: github.head_ref ...
+    paths:
+      include:
+        - "*.yml"
+        - "*.yaml"
