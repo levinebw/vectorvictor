@@ -8,6 +8,7 @@ on:
 jobs:
   cycode-sast-delta:
     name: "SAST Delta Scan — PR Changes Only"
+    if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
