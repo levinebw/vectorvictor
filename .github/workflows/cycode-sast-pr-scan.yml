@@ -1,0 +1,39 @@
+name: "Cycode SAST PR Scan (Delta)"
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  cycode-sast-delta:
+    name: "SAST Delta Scan — PR Changes Only"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Cycode CLI
+        run: pip install cycode
+
+      - name: Run Cycode SAST delta scan
+        env:
+          CYCODE_CLIENT_ID: ${{ secrets.CYCODE_CLIENT_ID }}
+          CYCODE_CLIENT_SECRET: ${{ secrets.CYCODE_CLIENT_SECRET }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=${{ github.event.pull_request.base.sha }}
+            HEAD=${{ github.event.pull_request.head.sha }}
+            echo "Scanning PR delta: ${BASE}..${HEAD}"
+            cycode scan -t sast commit-history -r "${BASE}..${HEAD}" .
+          else
+            echo "Scanning last commit: HEAD~1"
+            cycode scan -t sast commit-history -r HEAD~1 .
+          fi
