@@ -4,6 +4,7 @@ Exposes the authentication module over HTTP
 """
 from flask import Flask, request, jsonify
 import sqlite3
+import hashlib
 
 app = Flask(__name__)
 
@@ -43,6 +44,24 @@ def search_users():
     results = cursor.fetchall()
     conn.close()
     return jsonify({'results': results})
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    """Register a new user"""
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    # Vulnerable: MD5 is cryptographically broken for password storage
+    password_hash = hashlib.md5(password.encode()).hexdigest()
+
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password_hash))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'status': 'created'}), 201
 
 
 if __name__ == '__main__':
