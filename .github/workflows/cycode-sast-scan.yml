@@ -1,0 +1,30 @@
+name: "Cycode SAST Scan"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  cycode-sast:
+    name: "SAST Security Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Cycode CLI
+        run: pip install cycode
+
+      - name: Run Cycode SAST scan
+        env:
+          CYCODE_CLIENT_ID: ${{ secrets.CYCODE_CLIENT_ID }}
+          CYCODE_CLIENT_SECRET: ${{ secrets.CYCODE_CLIENT_SECRET }}
+        run: cycode scan -t sast path ./vulnerable_apps/
