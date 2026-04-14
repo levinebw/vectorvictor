@@ -1,0 +1,49 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: "3.12"
+    displayName: Set up Python
+
+  - script: pip install cycode
+    displayName: Install Cycode CLI
+
+  # Full scan — runs on push to main
+  - script: cycode scan -t sast path ./vulnerable_apps/
+    displayName: Run SAST full scan
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    env:
+      CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+      CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+
+  # Delta scan — runs on pull requests only
+  - bash: |
+      TARGET=$(echo "$(System.PullRequest.TargetBranch)" | sed 's|refs/heads/||')
+      git fetch origin "${TARGET}"
+      BASE=$(git merge-base "$(System.PullRequest.SourceCommitId)" FETCH_HEAD)
+      HEAD="$(System.PullRequest.SourceCommitId)"
+      echo "Target branch : ${TARGET}"
+      echo "Base SHA      : ${BASE}"
+      echo "Head SHA      : ${HEAD}"
+      echo "Range         : ${BASE}..${HEAD}"
+      cycode scan -t sast commit-history -r "${BASE}..${HEAD}" .
+    displayName: Run SAST delta scan
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+    env:
+      CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+      CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
