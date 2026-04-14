@@ -26,19 +26,19 @@ jobs:
         env:
           CYCODE_CLIENT_ID: ${{ secrets.CYCODE_CLIENT_ID }}
           CYCODE_CLIENT_SECRET: ${{ secrets.CYCODE_CLIENT_SECRET }}
-        run: cycode scan -t sast path --severity-threshold HIGH ./
+        run: cycode scan --severity-threshold HIGH -t sast path ./
 
       - name: SCA scan
         env:
           CYCODE_CLIENT_ID: ${{ secrets.CYCODE_CLIENT_ID }}
           CYCODE_CLIENT_SECRET: ${{ secrets.CYCODE_CLIENT_SECRET }}
-        run: cycode scan -t sca path --severity-threshold HIGH ./
+        run: cycode scan --severity-threshold HIGH -t sca path ./
 
       - name: Secrets scan
         env:
           CYCODE_CLIENT_ID: ${{ secrets.CYCODE_CLIENT_ID }}
           CYCODE_CLIENT_SECRET: ${{ secrets.CYCODE_CLIENT_SECRET }}
-        run: cycode scan -t secret path --severity-threshold HIGH ./
+        run: cycode scan --severity-threshold HIGH -t secret path ./
 
   build:
     name: "Build & Package"
