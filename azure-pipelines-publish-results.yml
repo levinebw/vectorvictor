@@ -15,7 +15,11 @@ pool:
   name: Default
 
 variables:
-  SCAN_PATH: "./vulnerable_apps/"
+  # Pulls CYCODE_CLIENT_ID and CYCODE_CLIENT_SECRET from ADO Library.
+  # Create via Pipelines → Library → + Variable group → 'cycode-credentials'.
+  - group: cycode-credentials
+  - name: SCAN_PATH
+    value: "./vulnerable_apps/"
 
 steps:
   - checkout: self
