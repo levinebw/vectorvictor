@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import sys
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 
 def extract_detections(data):
@@ -61,10 +61,13 @@ def main(src: str, dst: str) -> int:
         name = f"{path}:{line}" if line else path
         detail = json.dumps(d, indent=2, default=str)
         cdata = detail.replace("]]>", "]]]]><![CDATA[>")
-        out.append(f'  <testcase classname="{escape(classname)}" name="{escape(name)}">')
+        # Use quoteattr (returns the value wrapped in quotes with ", &, <, >
+        # escaped). Plain escape() doesn't handle " — any finding message
+        # containing a double quote breaks PublishTestResults@2 parsing.
+        out.append(f'  <testcase classname={quoteattr(classname)} name={quoteattr(name)}>')
         out.append(
-            f'    <failure type="{escape(severity)}" '
-            f'message="{escape(str(message))[:200]}"><![CDATA[\n{cdata}\n]]></failure>'
+            f'    <failure type={quoteattr(severity)} '
+            f'message={quoteattr(str(message)[:200])}><![CDATA[\n{cdata}\n]]></failure>'
         )
         out.append("  </testcase>")
 
