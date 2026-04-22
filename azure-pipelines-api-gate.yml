@@ -1,0 +1,41 @@
+# Pattern 2 — Cycode API gate (standalone example).
+#
+# Queries Cycode's Risk Intelligence Graph for Open violations in this repo.
+# Fails the build if any match the filters below.
+#
+# Prereqs (one-time in Azure DevOps):
+#   - Secret pipeline variables CYCODE_CLIENT_ID and CYCODE_CLIENT_SECRET
+#   - Agent pool 'Default' (self-hosted) or change to 'ubuntu-latest'
+#
+# Run manually: Pipelines → this pipeline → Run
+trigger: none
+pr: none
+
+pool:
+  name: Default
+
+variables:
+  # Must match the repo name shown in Cycode's Violations UI.
+  # Bare repo name as stored in Cycode's RIG — NOT "owner/repo".
+  REPO_NAME: "vectorvictor"
+
+steps:
+  - checkout: self
+
+  - script: |
+      if ! command -v jq >/dev/null 2>&1; then
+        sudo apt-get update -qq && sudo apt-get install -y -qq jq || true
+      fi
+      jq --version
+    displayName: "Ensure jq is available"
+
+  - script: bash scripts/cycode-gate.sh
+    displayName: "Cycode API gate — fail on Open violations"
+    env:
+      CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+      CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+      REPO_NAME: $(REPO_NAME)
+      # Optional tuning (uncomment to enable):
+      # SEVERITY_MIN: "High"       # only High + Critical fail the build
+      # CATEGORY: "SAST"           # scope to one scan type
+      # RISK_SCORE_MIN: "70"       # ignore findings below risk score 70

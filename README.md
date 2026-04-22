@@ -83,6 +83,30 @@ Python web application examples demonstrating **OWASP Top 10 (2021)** vulnerabil
 - Hardcoded Secrets
 
 
+## 🔧 Cycode CI/CD Integration Examples
+
+Working examples of Cycode as a CI/CD gate in Azure Pipelines and GitHub Actions.
+
+### GitHub Actions (`.github/workflows/`)
+- `cycode-sast-scan.yml` — full SAST scan on push to main
+- `cycode-sast-pr-scan.yml` — delta scan on pull requests
+- `cycode-release-gate.yml` — release-stage gate (SAST + SCA + Secrets)
+
+### Azure Pipelines
+
+| File | Pattern |
+|------|---------|
+| `azure-pipelines.yml` | **CLI gate** — full scan on push, delta on PR (original pattern) |
+| `azure-pipelines-api-gate.yml` | **API gate** — query Cycode RIG for Open violations in the repo |
+| `azure-pipelines-publish-results.yml` | **Surface results in Azure UI** — Tests tab + custom summary tab + downloadable artifact |
+| `azure-pipelines-template-consumer.yml` | **Centralized template** — consumer that `extends: templates/cycode-scan.yml` |
+| `templates/cycode-scan.yml` | Master template (scan + publish + gate) consumed by many pipelines |
+| `scripts/cycode-gate.sh` | Standalone API-gate script (works from any shell) |
+| `scripts/cycode-json-to-junit.py` | Converts `cycode -o json` output to JUnit XML |
+| `scripts/cycode-summary.py` | Generates a short Markdown summary for the build summary tab |
+
+Secrets needed in Azure DevOps (Pipelines → Library or pipeline variables with lock icon): `CYCODE_CLIENT_ID`, `CYCODE_CLIENT_SECRET`.
+
 ## 🚀 Getting Started
 
 Each directory contains its own README with specific vulnerability descriptions.
