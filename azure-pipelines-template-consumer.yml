@@ -1,0 +1,33 @@
+# Pattern 4 — Consumer pipeline that extends the centralized Cycode template.
+#
+# This same-repo example demonstrates the consumer shape. In production the
+# template lives in a separate repo owned by the security team; consumers
+# reference it via `resources.repositories` and `extends: ...@security-templates`.
+#
+# Cross-repo version (replace the local `extends` below):
+#
+#   resources:
+#     repositories:
+#       - repository: security-templates
+#         type: git
+#         name: SecurityTeam/cycode-pipeline-templates
+#         ref: refs/tags/v1
+#   extends:
+#     template: templates/cycode-scan.yml@security-templates
+#     parameters: { ... }
+#
+# App teams customize only the parameters — the scan logic, publishing, and
+# gate behavior all live in the template and evolve centrally.
+trigger: none
+pr: none
+
+extends:
+  template: templates/cycode-scan.yml
+  parameters:
+    scanPath: "./vulnerable_apps/"
+    scanTypeFlags: "-t sast"
+    severityThreshold: "high"
+    repoName: "AppSecHQ/vectorvictor"
+    gateMode: "both"                  # defense in depth: CLI + API
+    publishResults: true
+    poolName: "Default"
