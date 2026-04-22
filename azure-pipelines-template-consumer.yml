@@ -27,7 +27,7 @@ extends:
     scanPath: "./vulnerable_apps/"
     scanTypeFlags: "-t sast"
     severityThreshold: "high"
-    repoName: "AppSecHQ/vectorvictor"
+    repoName: "vectorvictor"            # bare repo name (not "owner/repo")
     gateMode: "both"                  # defense in depth: CLI + API
     publishResults: true
     poolName: "Default"

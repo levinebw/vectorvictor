@@ -16,7 +16,8 @@ pool:
 
 variables:
   # Must match the repo name shown in Cycode's Violations UI.
-  REPO_NAME: "AppSecHQ/vectorvictor"
+  # Bare repo name as stored in Cycode's RIG — NOT "owner/repo".
+  REPO_NAME: "vectorvictor"
 
 steps:
   - checkout: self

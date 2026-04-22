@@ -3,7 +3,8 @@
 #
 # Required env:
 #   CYCODE_CLIENT_ID, CYCODE_CLIENT_SECRET
-#   REPO_NAME     — repo name as shown in Cycode's Violations UI, e.g. "AppSecHQ/vectorvictor"
+#   REPO_NAME     — BARE repo name as stored in Cycode's RIG (e.g. "vectorvictor",
+#                   NOT "AppSecHQ/vectorvictor"). Check the Violations UI to confirm.
 #
 # Optional env (any combination):
 #   SEVERITY_MIN     Critical | High | Medium | Low        (inclusive threshold)
@@ -98,16 +99,23 @@ if ! jq -e '.result' >/dev/null 2>&1 <<<"$RESPONSE"; then
 fi
 
 COUNT=$(jq '.result | length' <<<"$RESPONSE")
-echo "Open violations matching filters for ${REPO_NAME}: ${COUNT}"
+HAS_MORE=$(jq -r '.fast_query_has_more // false' <<<"$RESPONSE")
+if [[ "$HAS_MORE" == "true" ]]; then
+  COUNT_LABEL="at least ${COUNT} (page cap hit)"
+else
+  COUNT_LABEL="${COUNT}"
+fi
+echo "Open violations matching filters for ${REPO_NAME}: ${COUNT_LABEL}"
 
 # --- Decision -------------------------------------------------------------
 if (( COUNT > 0 )); then
   echo
   echo "Top findings:"
-  jq -r '.result[] | "  [\(.severity // "-")] \(.source_policy_name // "-") — \(.detection_details.file_path // .detection_details.package_name // "-") (risk \(.risk_score // "-"))"' \
+  # Each .result[] item wraps the detection in a .resource object.
+  jq -r '.result[] | .resource | "  [\(.severity // "-") / risk \(.risk_score // "-")] \(.source_policy_name // "-") — \(.detection_details.file_path // .detection_details.package_name // .source_entity_name // "-"):\(.detection_details.line // "")"' \
     <<<"$RESPONSE" | head -20
   echo
-  echo "##vso[task.logissue type=error]Cycode gate failed: ${COUNT} Open violation(s) in ${REPO_NAME}"
+  echo "##vso[task.logissue type=error]Cycode gate failed: ${COUNT_LABEL} Open violation(s) in ${REPO_NAME}"
   exit 1
 fi
 
