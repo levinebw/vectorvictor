@@ -1,0 +1,142 @@
+# Centralized Cycode scan template.
+#
+# Single source of truth for the Cycode CI/CD gate across many pipelines.
+# Consumers `extends:` this template and pass app-specific parameters.
+#
+# Runs a scan in JSON mode, publishes results to the Tests tab + build summary
+# tab + artifact, then enforces a pass/fail gate via the CLI, the API, or both.
+#
+# Cross-repo usage pattern (production):
+#   resources:
+#     repositories:
+#       - repository: security-templates
+#         type: git
+#         name: SecurityTeam/cycode-pipeline-templates
+#         ref: refs/tags/v1
+#   extends:
+#     template: templates/cycode-scan.yml@security-templates
+#     parameters: { ... }
+#
+# Single-repo usage (this demo): see ../azure-pipelines-template-consumer.yml
+
+parameters:
+  - name: scanPath
+    type: string
+    default: "./"
+  - name: scanTypeFlags
+    type: string
+    default: "-t sast"                # e.g. "-t sast -t sca -t secret"
+  - name: severityThreshold
+    type: string
+    default: "info"                   # info | low | medium | high | critical
+  - name: repoName
+    type: string                      # required — repo name as shown in Cycode
+  - name: gateMode
+    type: string
+    default: "cli"                    # cli | api | both | none
+  - name: publishResults
+    type: boolean
+    default: true
+  - name: poolName
+    type: string
+    default: "Default"                # self-hosted pool; use 'ubuntu-latest' for MS-hosted
+  - name: pythonVersion
+    type: string
+    default: "3.12"
+
+stages:
+  - stage: Security
+    displayName: "Security — Cycode"
+    jobs:
+      - job: CycodeScan
+        displayName: "Cycode scan + gate"
+        pool:
+          name: ${{ parameters.poolName }}
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          - task: UsePythonVersion@0
+            displayName: "Use Python ${{ parameters.pythonVersion }}"
+            inputs:
+              versionSpec: ${{ parameters.pythonVersion }}
+
+          - script: |
+              set -e
+              python3 -m pip install --upgrade pip
+              pip install cycode
+              if ! command -v jq >/dev/null 2>&1; then
+                if command -v apt-get >/dev/null 2>&1; then
+                  sudo apt-get update -qq && sudo apt-get install -y -qq jq
+                elif command -v brew >/dev/null 2>&1; then
+                  brew install jq
+                else
+                  echo "##vso[task.logissue type=error]jq is not installed and no supported package manager (apt-get, brew) was found. Preinstall jq on the agent."
+                  exit 1
+                fi
+              fi
+            displayName: "Install Cycode CLI + jq"
+
+          # ---- Scan (soft-fail so we can publish results, then gate) ------
+          - script: |
+              set +e
+              cycode -o json scan --soft-fail \
+                ${{ parameters.scanTypeFlags }} \
+                --severity-threshold ${{ parameters.severityThreshold }} \
+                path ${{ parameters.scanPath }} > cycode-results.json
+              echo "scan exit: $?"
+              ls -la cycode-results.json
+            displayName: "Cycode scan (JSON)"
+            env:
+              CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+              CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+
+          # ---- Publish results --------------------------------------------
+          - ${{ if eq(parameters.publishResults, true) }}:
+              - script: python3 scripts/cycode-json-to-junit.py cycode-results.json cycode-junit.xml
+                displayName: "Convert JSON → JUnit"
+                condition: succeededOrFailed()
+
+              - task: PublishTestResults@2
+                displayName: "Publish to Tests tab"
+                condition: succeededOrFailed()
+                inputs:
+                  testResultsFormat: "JUnit"
+                  testResultsFiles: "cycode-junit.xml"
+                  testRunTitle: "Cycode"
+                  mergeTestResults: true
+                  failTaskOnFailedTests: false
+
+              - script: |
+                  python3 scripts/cycode-summary.py cycode-results.json > cycode-summary.md
+                  echo "##vso[task.uploadsummary]$(System.DefaultWorkingDirectory)/cycode-summary.md"
+                displayName: "Publish custom summary tab"
+                condition: succeededOrFailed()
+
+              - task: PublishBuildArtifacts@1
+                displayName: "Publish raw Cycode JSON"
+                condition: succeededOrFailed()
+                inputs:
+                  pathToPublish: "cycode-results.json"
+                  artifactName: "cycode-report"
+
+          # ---- Gates ------------------------------------------------------
+          - ${{ if or(eq(parameters.gateMode, 'cli'), eq(parameters.gateMode, 'both')) }}:
+              - script: |
+                  cycode scan \
+                    ${{ parameters.scanTypeFlags }} \
+                    --severity-threshold ${{ parameters.severityThreshold }} \
+                    path ${{ parameters.scanPath }}
+                displayName: "Gate: CLI scan (fails on findings)"
+                env:
+                  CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+                  CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+
+          - ${{ if or(eq(parameters.gateMode, 'api'), eq(parameters.gateMode, 'both')) }}:
+              - script: bash scripts/cycode-gate.sh
+                displayName: "Gate: API (fails on Open violations)"
+                env:
+                  CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+                  CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+                  REPO_NAME: ${{ parameters.repoName }}
+                  SEVERITY_MIN: ${{ parameters.severityThreshold }}

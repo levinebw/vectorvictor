@@ -1,0 +1,55 @@
+# Pattern 2 — Cycode API gate (standalone example).
+#
+# Queries Cycode's Risk Intelligence Graph for Open violations in this repo.
+# Fails the build if any match the filters below.
+#
+# Prereqs (one-time in Azure DevOps):
+#   - Library variable group 'cycode-credentials' with CYCODE_CLIENT_ID and
+#     CYCODE_CLIENT_SECRET (both marked secret).
+#   - Agent pool 'Default' (self-hosted) or change to 'ubuntu-latest'
+#
+# Run manually: Pipelines → this pipeline → Run
+trigger: none
+pr: none
+
+pool:
+  name: Default
+
+variables:
+  # Pulls CYCODE_CLIENT_ID and CYCODE_CLIENT_SECRET from ADO Library.
+  - group: cycode-credentials
+  # Must match the repo name shown in Cycode's Violations UI.
+  # Bare repo name as stored in Cycode's RIG — NOT "owner/repo".
+  - name: REPO_NAME
+    value: "vectorvictor"
+
+steps:
+  - checkout: self
+
+  - script: |
+      set -e
+      if command -v jq >/dev/null 2>&1; then
+        jq --version
+        exit 0
+      fi
+      if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update -qq && sudo apt-get install -y -qq jq
+      elif command -v brew >/dev/null 2>&1; then
+        brew install jq
+      else
+        echo "##vso[task.logissue type=error]jq is not installed and no supported package manager (apt-get, brew) was found. Preinstall jq on the agent."
+        exit 1
+      fi
+      jq --version
+    displayName: "Ensure jq is available"
+
+  - script: bash scripts/cycode-gate.sh
+    displayName: "Cycode API gate — fail on Open violations"
+    env:
+      CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+      CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+      REPO_NAME: $(REPO_NAME)
+      # Optional tuning (uncomment to enable):
+      # SEVERITY_MIN: "High"       # only High + Critical fail the build
+      # CATEGORY: "SAST"           # scope to one scan type
+      # RISK_SCORE_MIN: "70"       # ignore findings below risk score 70

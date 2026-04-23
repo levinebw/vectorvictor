@@ -1,0 +1,97 @@
+# Pattern 3 — Publish Cycode results to the Azure Pipelines UI.
+#
+# Populates three surfaces from a single Cycode scan:
+#   - Tests tab       (each finding = failed test, via JUnit)
+#   - Custom summary  (Markdown report as a tab on the build summary page)
+#   - Artifact        (raw cycode-results.json for download)
+#
+# After the results are published, a final CLI gate step enforces pass/fail.
+# Swap the gate to `bash scripts/cycode-gate.sh` to gate on the platform API
+# instead (see azure-pipelines-api-gate.yml).
+trigger: none
+pr: none
+
+pool:
+  name: Default
+
+variables:
+  # Pulls CYCODE_CLIENT_ID and CYCODE_CLIENT_SECRET from ADO Library.
+  # Create via Pipelines → Library → + Variable group → 'cycode-credentials'.
+  - group: cycode-credentials
+  - name: SCAN_PATH
+    value: "./vulnerable_apps/"
+
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  - task: UsePythonVersion@0
+    displayName: "Use Python 3.12"
+    inputs:
+      versionSpec: "3.12"
+
+  - script: |
+      set -e
+      python3 -m pip install --upgrade pip
+      pip install cycode
+    displayName: "Install Cycode CLI"
+
+  # ---- Scan with --soft-fail so we can publish results first ------------
+  - script: |
+      set +e
+      cycode -o json scan --soft-fail -t sast path $(SCAN_PATH) > cycode-results.json
+      echo "scan exit: $?"
+      ls -la cycode-results.json
+    displayName: "Cycode SAST scan (JSON)"
+    env:
+      CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+      CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
+
+  # ---- Surface 1: Tests tab --------------------------------------------
+  - script: python3 scripts/cycode-json-to-junit.py cycode-results.json cycode-junit.xml
+    displayName: "Convert JSON → JUnit"
+    condition: succeededOrFailed()
+
+  - task: PublishTestResults@2
+    displayName: 'Publish to "Tests" tab'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: "JUnit"
+      testResultsFiles: "cycode-junit.xml"
+      testRunTitle: "Cycode SAST"
+      mergeTestResults: true
+      failTaskOnFailedTests: false
+
+  # ---- Surface 2: Build summary tab + Surface 3: rich report artifact ----
+  # Generates Markdown (for the summary tab), HTML (rich interactive report),
+  # and CSV (Excel-friendly export) from a single cycode-results.json. The
+  # HTML + CSV + raw JSON are bundled into one 'cycode-report' artifact.
+  - script: |
+      set -e
+      mkdir -p cycode-report
+      cp cycode-results.json cycode-report/cycode-results.json
+      python3 scripts/cycode-summary.py cycode-results.json \
+        --md   cycode-report/cycode-summary.md \
+        --html cycode-report/cycode-report.html \
+        --csv  cycode-report/cycode-report.csv
+      ls -la cycode-report/
+      echo "##vso[task.uploadsummary]$(System.DefaultWorkingDirectory)/cycode-report/cycode-summary.md"
+    displayName: 'Build reports (Markdown summary, HTML, CSV) + publish summary tab'
+    condition: succeededOrFailed()
+    env:
+      # Optional: override console base URL if your tenant uses a custom domain.
+      CYCODE_CONSOLE_URL: "https://app.cycode.com"
+
+  - task: PublishBuildArtifacts@1
+    displayName: "Publish Cycode report bundle (JSON + HTML + CSV)"
+    condition: succeededOrFailed()
+    inputs:
+      pathToPublish: "cycode-report"
+      artifactName: "cycode-report"
+
+  # ---- Final gate -------------------------------------------------------
+  - script: cycode scan -t sast path $(SCAN_PATH)
+    displayName: "Cycode SAST gate (fails build on findings)"
+    env:
+      CYCODE_CLIENT_ID: $(CYCODE_CLIENT_ID)
+      CYCODE_CLIENT_SECRET: $(CYCODE_CLIENT_SECRET)
