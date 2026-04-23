@@ -62,19 +62,31 @@ steps:
       mergeTestResults: true
       failTaskOnFailedTests: false
 
-  # ---- Surface 2: Build summary tab ------------------------------------
+  # ---- Surface 2: Build summary tab + Surface 3: rich report artifact ----
+  # Generates Markdown (for the summary tab), HTML (rich interactive report),
+  # and CSV (Excel-friendly export) from a single cycode-results.json. The
+  # HTML + CSV + raw JSON are bundled into one 'cycode-report' artifact.
   - script: |
-      python3 scripts/cycode-summary.py cycode-results.json > cycode-summary.md
-      echo "##vso[task.uploadsummary]$(System.DefaultWorkingDirectory)/cycode-summary.md"
-    displayName: 'Publish "Cycode Scan Summary" tab'
+      set -e
+      mkdir -p cycode-report
+      cp cycode-results.json cycode-report/cycode-results.json
+      python3 scripts/cycode-summary.py cycode-results.json \
+        --md   cycode-report/cycode-summary.md \
+        --html cycode-report/cycode-report.html \
+        --csv  cycode-report/cycode-report.csv
+      ls -la cycode-report/
+      echo "##vso[task.uploadsummary]$(System.DefaultWorkingDirectory)/cycode-report/cycode-summary.md"
+    displayName: 'Build reports (Markdown summary, HTML, CSV) + publish summary tab'
     condition: succeededOrFailed()
+    env:
+      # Optional: override console base URL if your tenant uses a custom domain.
+      CYCODE_CONSOLE_URL: "https://app.cycode.com"
 
-  # ---- Surface 3: Downloadable artifact --------------------------------
   - task: PublishBuildArtifacts@1
-    displayName: "Publish raw Cycode JSON"
+    displayName: "Publish Cycode report bundle (JSON + HTML + CSV)"
     condition: succeededOrFailed()
     inputs:
-      pathToPublish: "cycode-results.json"
+      pathToPublish: "cycode-report"
       artifactName: "cycode-report"
 
   # ---- Final gate -------------------------------------------------------
