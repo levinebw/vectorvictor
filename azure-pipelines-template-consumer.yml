@@ -21,6 +21,11 @@
 trigger: none
 pr: none
 
+variables:
+  # Pulls CYCODE_CLIENT_ID and CYCODE_CLIENT_SECRET from ADO Library.
+  # Create via Pipelines → Library → + Variable group → 'cycode-credentials'.
+  - group: cycode-credentials
+
 extends:
   template: templates/cycode-scan.yml
   parameters:
